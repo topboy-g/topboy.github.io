@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>High & Wild — Truth & Dare + Spin</title>
+  <style>
+    :root{
+      --bg:#050405; --card:#111; --accent:#d10000; --muted:#b1b1b1;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#030203,#090909);color:#fff}
+    .wrap{max-width:880px;margin:18px auto;padding:18px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{margin:0;font-size:20px;letter-spacing:.4px}
+    p.lead{margin:4px 0 0;color:var(--muted);font-size:13px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:10px 14px;border-radius:10px;color:#fff;font-weight:700;cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,#4a0000,var(--accent));border:none;box-shadow:0 8px 30px rgba(209,0,0,0.12)}
+    .card{margin-top:18px;background:linear-gradient(180deg,#0d0d0d,#141414);padding:18px;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+    .meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+    .switch{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.02);padding:8px;border-radius:999px}
+    .knob{width:18px;height:18px;border-radius:50%;background:#fff;display:inline-block;transform:translateX(0);transition:transform .18s}
+    .knob.on{transform:translateX(20px);background:var(--accent)}
+    .content{font-size:18px;text-align:center;padding:18px}
+    .small{font-size:13px;color:var(--muted)}
+    .chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+    .chip{background:rgba(255,255,255,0.03);padding:6px 10px;border-radius:999px;font-size:13px}
+    footer{margin-top:16px;color:var(--muted);font-size:13px;text-align:center}
+    .spinboard{width:280px;height:280px;border-radius:50%;margin:18px auto;display:grid;place-items:center;background:conic-gradient(#b30000 0 25%, transparent 25% 50%, #b30000 50% 75%, transparent 75% 100%);box-shadow:0 10px 40px rgba(0,0,0,0.6)}
+    .pointer{width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:20px solid var(--accent);margin-top:-12px}
+    .flexcenter{display:flex;align-items:center;justify-content:center;flex-direction:column}
+    @media (max-width:520px){.content{font-size:16px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>🔥 High & Wild</h1>
+        <p class="lead">Truth & Dare + Spin the Bottle — No-holds-barred mode available</p>
+      </div>
+      <div class="meta">
+        <div class="small">Adult only • Consent first • Safe word recommended</div>
+      </div>
+    </header>
+
+    <div class="controls">
+      <div class="switch" id="wildSwitch" role="button" tabindex="0" aria-pressed="true">
+        <div class="small">Extreme Mode</div>
+        <div id="knob" class="knob on"></div>
+      </div>
+      <button id="truthBtn" class="btn">Truth</button>
+      <button id="dareBtn" class="btn">Dare</button>
+      <button id="randomBtn" class="btn">Random</button>
+      <button id="spinBtn" class="btn primary">Spin the Bottle</button>
+      <button id="resetBtn" class="btn">Reset Game</button>
+    </div>
+
+    <div class="card" id="cardArea" aria-live="polite">
+      <div class="content" id="cardText">Tap a button to start — skip = take a drink/hit. Respect consent & limits.</div>
+      <div class="chips" id="chips"></div>
+      <div class="row" style="justify-content:center;margin-top:14px">
+        <div class="small">Safe word:</div>
+        <input id="safeWord" placeholder="Type a safe word (optional)" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);background:#0b0b0b;color:#fff" />
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;justify-content:center">
+        <div class="flexcenter">
+          <div id="spinBoard" class="spinboard" title="Spin the bottle"></div>
+          <div class="pointer" id="pointer"></div>
+        </div>
+        <div style="max-width:420px">
+          <div class="small">Players (comma separated). Put yourselves in order — spinner chooses target.</div>
+          <input id="players" placeholder="e.g. Me,Her" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);background:#0b0b0b;color:#fff" />
+          <div style="margin-top:8px" class="small">After spinning, the bottle selects a person index (you decide action).</div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="small">Tips: hydrate, pace drinks & hits, check consent often. Use the safe word to stop immediately.</div>
+    </footer>
+  </div>
+
+<script>
+/* ======= Card Data: Truths, Dares, Games, Drinks, Specials (no external calls) ======= */
+const DATA = {
+  truths: [
+    "Tell the most taboo fantasy you've had about your partner.",
+    "What's the dirtiest dream you've had about your partner?",
+    "Have you ever wanted to try power-play? Describe what you'd like.",
+    "Would you ever consider a threesome? Be honest about limits.",
+    "Name a secret kink you haven't shared before.",
+    "What's the one thing you'd do to me if no one could see?",
+    "Have you ever had a risky public thought about us? Describe.",
+    "What's a past experience you'd repeat tonight with me?",
+    "What scent or spot of mine makes you want me instantly?",
+    "Describe a scene where you take charge of me."
+  ],
+  dares: [
+    "Take off one piece of clothing slowly while locking eyes.",
+    "Give a 60-second slow kiss focusing on the neck.",
+    "Do a 90-second striptease to a song of your choice.",
+    "Take a body shot from any non-genital area chosen by partner.",
+    "Blindfold partner and explore them with three textures (ice, silk, feather).",
+    "Tie a soft scarf to one wrist; partner chooses the playful instruction.",
+    "Feed each other something sweet from the body (consensual).",
+    "Let partner whisper a sequence of moves and follow them for 60s.",
+    "Record a private audio describing what you'd do to your partner; play it back.",
+    "Wear only one item of clothing for the next 5 rounds."
+  ],
+  games: [
+    "Silent Seduction: 3 minutes of touch-only, no words. Fail = sip.",
+    "Roulette Kiss: spin to pick a body area and kiss it for 30s.",
+    "Temperature Play: ice vs warm oil (consensual) — choose & react.",
+    "Quick Fantasy: 60-second improv scene judged by the other.",
+    "Two Truths, One Lie — flirty edition; loser drinks."
+  ],
+  drinks: [
+    "Both take two sips and whisper a fantasy.",
+    "Loser of next round takes a shot.",
+    "Last to tap the screen takes 2 sips.",
+    "If you skip a dare, take a shot + one hit.",
+    "Both take one hit and exchange a compliment."
+  ],
+  specials: [
+    "Choose: 1) 5-min sensual massage 2) Slow strip + dance 3) Blindfolded tease 3 min",
+    "Choose: 1) Body shot 2) Ice-tease trail 3) Sensory deprivation 2 min",
+    "Choose: 1) Act out a fantasy 2) Remove 3 items 3) 3 hits + passionate kiss"
+  ],
+  extremeExtras: [
+    "Let partner remove your underwear with their teeth (consensual).",
+    "Let partner guide a 2-minute full-body kiss trail slowly.",
+    "Let partner tie your hands with a soft scarf and tease for 2 minutes.",
+    "Choose a private photo pose (consent only) and take it for each other."
+  ]
+};
+
+/* Add more items to reach 50+ prompts quickly */
+(function expand(){
+  const extraTruths = ["What's a risky idea you want to try with me?", "When's the naughtiest place you'd like us to be together?"];
+  const extraDares = ["Hold your partner tight and grind for 30 seconds.", "Mimic a sexy scene from a film for 45 seconds."];
+  DATA.truths.push(...extraTruths);
+  DATA.dares.push(...extraDares);
+  DATA.dares.push(...DATA.extremeExtras);
+})();
+
+/* UI refs */
+const cardText = document.getElementById('cardText');
+const chips = document.getElementById('chips');
+const wildSwitch = document.getElementById('wildSwitch');
+const knob = document.getElementById('knob');
+let extremeMode = true; // default ON per your request
+
+/* Wild switch */
+wildSwitch.addEventListener('click', toggleWild);
+function toggleWild(){
+  extremeMode = !extremeMode;
+  knob.classList.toggle('on', extremeMode);
+  wildSwitch.setAttribute('aria-pressed', extremeMode ? 'true' : 'false');
+  flashTip(extremeMode ? "Extreme Mode ON — full deck active." : "Extreme Mode OFF — playing milder.");
+}
+
+/* pick card helper */
+function pick(type){
+  let pool = [];
+  if(type === 'Truth') pool = DATA.truths.slice();
+  else if(type === 'Dare') pool = DATA.dares.slice();
+  else if(type === 'Game') pool = DATA.games.slice();
+  else if(type === 'Drink') pool = DATA.drinks.slice();
+  else if(type === 'Special') pool = DATA.specials.slice();
+  if(!extremeMode){
+    // remove items that include explicit markers (here we just trim extremeExtras when not extreme)
+    pool = pool.filter(t => !DATA.extremeExtras.includes(t));
+  }
+  if(pool.length === 0) return "No cards available for this mode. Toggle Extreme Mode.";
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+/* show card */
+function showCard(category, text=null){
+  const card = text || pick(category);
+  cardText.textContent = (typeof card === 'string') ? `${category}: ${card}` : card;
+  chips.innerHTML = "";
+  const chip = document.createElement('div'); chip.className='chip'; chip.textContent=category; chips.appendChild(chip);
+  if(extremeMode){
+    const w = document.createElement('div'); w.className='chip'; w.textContent='EXTREME'; chips.appendChild(w);
+  }
+}
+
+/* flash tip */
+function flashTip(msg){
+  const prev = cardText.textContent;
+  cardText.textContent = msg;
+  setTimeout(()=>{ cardText.textContent = prev; }, 1500);
+}
+
+/* button bindings */
+document.getElementById('truthBtn').addEventListener('click', ()=> showCard('Truth'));
+document.getElementById('dareBtn').addEventListener('click', ()=> showCard('Dare'));
+document.getElementById('randomBtn').addEventListener('click', ()=> {
+  const cats = ['Truth','Dare','Game','Drink','Special'];
+  showCard(cats[Math.floor(Math.random()*cats.length)]);
+});
+document.getElementById('resetBtn').addEventListener('click', ()=> {
+  cardText.textContent = "Game reset. Tap a button to begin.";
+  chips.innerHTML = "";
+});
+
+/* ========== Spin the Bottle logic ========== */
+const spinBoard = document.getElementById('spinBoard');
+const pointer = document.getElementById('pointer');
+
+function spinBottle(){
+  const playersInput = document.getElementById('players').value.trim();
+  const players = playersInput ? playersInput.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  if(players.length < 2){
+    flashTip('Add at least two player names in the Players box (comma separated).');
+    return;
+  }
+  // spin animation: random angle
+  const angle = Math.floor(Math.random()*360) + 720; // 2+ rotations
+  spinBoard.style.transition = 'transform 2.2s cubic-bezier(.2,.9,.2,1)';
+  spinBoard.style.transform = `rotate(${angle}deg)`;
+  // after spin, calculate which player is selected
+  setTimeout(()=>{
+    spinBoard.style.transition = '';
+    const final = angle % 360;
+    // split circle into equal slices = players.length
+    const slice = 360 / players.length;
+    const idx = Math.floor((final) / slice);
+    const chosen = players[idx];
+    showCard('Spin Result', `Bottle points to: ${chosen}. Choose an action (kiss/answer/dare) or press Random for a card.`);
+  }, 2300);
+}
+
+document.getElementById('spinBtn').addEventListener('click', spinBottle);
+
+/* detect safe word stop (visual only) */
+document.getElementById('safeWord').addEventListener('change', (e)=>{
+  flashTip('Safe word set. Use it if you need to stop.');
+});
+
+/* init */
+window.addEventListener('load', ()=> {
+  cardText.textContent = "Tap Truth, Dare, Random or Spin the Bottle to start. Extreme Mode default ON.";
+});
+</script>
+</body>
+</html>
